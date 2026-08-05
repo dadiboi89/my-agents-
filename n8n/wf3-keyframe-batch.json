@@ -11,6 +11,20 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
+        "path": "limoncino-keyframe-batch",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000012",
+      "name": "Webhook Trigger (Claude)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 180],
+      "webhookId": "c3000000-0000-4000-8000-000000000012"
+    },
+    {
+      "parameters": {
         "documentId": {
           "__rl": true,
           "mode": "id",
@@ -217,6 +231,17 @@
   ],
   "connections": {
     "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Read Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger (Claude)": {
       "main": [
         [
           {

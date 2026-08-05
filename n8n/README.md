@@ -61,7 +61,48 @@ volumes:
 4. **WF3 prerequisite:** add a `Prompt` column to the Shots tab and paste each shot's keyframe prompt from `content/chi-vive-nel-mare-production-plan.md` §2 (master style block + character refs appended).
 5. Run WF1/WF3 manually the first times; activate WF2's schedule once the channel has uploads.
 
-## 4. Notes & known edges
+## 4. Connecting Claude to your n8n
+
+Two complementary paths — both are set up in this repo:
+
+### Path A — Claude Code sessions drive n8n (the `n8n-mcp` server in this repo)
+
+The repo now contains `n8n-mcp/`, a small MCP server (same pattern as `creatomate-mcp`) that
+wraps your n8n instance's REST API. It's already registered in `.mcp.json` — Claude Code
+sessions in this repo pick it up automatically once two environment variables are set:
+
+| Env var | Value |
+|---|---|
+| `N8N_BASE_URL` | Your instance URL, e.g. `https://n8n.yourdomain.com` |
+| `N8N_API_KEY` | Create in n8n: **Settings → n8n API → Create API key** |
+
+Tools Claude gets: `list_workflows`, `get_workflow`, `set_workflow_active`,
+**`trigger_webhook`** (fires WF1/WF3 via their webhook paths), `list_executions`,
+`get_execution` (with full node data for debugging failed runs).
+
+WF1 and WF3 now ship with a **Webhook trigger** alongside the manual one, so once the
+workflows are imported and **activated**, Claude can fire them at:
+
+- `POST {N8N_BASE_URL}/webhook/limoncino-render-publish`
+- `POST {N8N_BASE_URL}/webhook/limoncino-keyframe-batch`
+
+Typical loop: Claude triggers the keyframe batch → checks `list_executions` → on `error`,
+pulls `get_execution(include_data)` and diagnoses the failing node → re-triggers.
+
+### Path B — claude.ai app drives n8n (MCP Server Trigger node)
+
+For triggering from the Claude chat app (no Claude Code session), use n8n's native
+**MCP Server Trigger** node: create a new workflow, add *MCP Server Trigger*, attach
+*Custom n8n Workflow Tool* nodes pointing at WF1/WF3, activate it, copy the trigger's
+**Production URL** and Bearer token, then in claude.ai go to
+**Settings → Connectors → Add custom connector** and paste them. Claude in the app can
+then call your workflows as first-class tools.
+
+Security notes: expose n8n over HTTPS only; treat the API key and webhook paths as
+secrets (anyone with the URL can fire an active webhook — add Header Auth on the
+Webhook nodes if the instance is publicly reachable).
+
+## 5. Notes & known edges
 
 - **Made-for-kids:** WF1 sets `selfDeclaredMadeForKids: true` on upload. Verify the flag on the first upload in YouTube Studio, and set the AI-disclosure toggle there once (the API doesn't expose it).
 - **Upload stays private** by design — QC first, then flip to public in Studio (or add a tiny "publish" workflow later).

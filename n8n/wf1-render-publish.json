@@ -11,6 +11,20 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
+        "path": "limoncino-render-publish",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000012",
+      "name": "Webhook Trigger (Claude)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 180],
+      "webhookId": "a1000000-0000-4000-8000-000000000012"
+    },
+    {
+      "parameters": {
         "mode": "manual",
         "assignments": {
           "assignments": [
@@ -226,6 +240,17 @@
   ],
   "connections": {
     "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Episode Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger (Claude)": {
       "main": [
         [
           {
