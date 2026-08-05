@@ -48,6 +48,20 @@ Sky `#4EC3F7` · Sea `#2AA8E0` · Sand `#FFE29A` · Lemon `#FFD93B` · Coral `#F
 
 **Consistency rules:** same seed family per character where the tool allows; regenerate any shot where face/outfit drifts (budget 1.5× retries); camera always static or slow push-in — no fast moves for toddler pacing.
 
+### 1.5 Lip-sync strategy — two-lane pipeline
+
+Mouths are the AI tell. Solve it by routing shots into two lanes:
+
+**Lane A — TRUE SYNC (talking-character model).** Only the 10 shots where a character speaks to camera need real mouth sync. For these, generate the keyframe still as normal, then instead of plain image-to-video, run **still + the recorded Italian VO line** through a talking-character/lip-sync model — the mouth animates to the actual audio:
+- **SH02, SH03, SH04** (cold-open dialogue) · **SH15** (Gaia call-and-response) · **SH19** (Nino call-and-response) · **SH22, SH23** (emotional beat lines) · **SH26** (jump countdown) · **SH30** (octopus payoff) · end-card narrator if on-screen.
+- Tool options, in order of preference: **Higgsfield's talking-head/speak workflow** (connected here — confirm via its workflow catalog before Day 3), **Kling's lip-sync feature** (exists on the Kling platform; not exposed through the MCP, usable via their app on our generated clips), or **Hedra** (best-in-class for stylized/cartoon character sync, separate account). Cost per clip is in the same range as plain image-to-video, so this doesn't move the budget materially.
+
+**Lane B — LOOSE SYNC (framing does the work).** All singing sections stay plain image-to-video, but framed so sync never gets scrutinized — which is exactly how big studio toddler content handles dance numbers anyway:
+- During sung lyrics, favor **wide/medium dance shots** (SH09–SH11, SH18, SH20, SH31) where mouths are small in frame, or **cutaways to the animals** (SH12–SH13, SH16–SH17, SH24–SH25, SH27–SH29) — the fish/crab/dolphin/octopus don't speak, so they need zero sync.
+- Never hold a close-up on a singing human face for more than ~2s in Lane B; if a generation delivers a distracting mouth, recrop or swap to the animal cutaway.
+
+Rule of thumb when storyboarding future episodes: **speaking close-up → Lane A; singing → wide, dancing, or animal on screen.**
+
 ---
 
 ## 2. Shot list with generation prompts
@@ -243,6 +257,7 @@ Connected generators available in this workspace: **Kling** (`klingai` MCP — i
 - [ ] No text/letters accidentally baked into any generated frame
 - [ ] No cut shorter than 3s; no flashing >3 Hz (photosensitivity safety); camera moves slow
 - [ ] Counting numbers land exactly on the 8 beats; lyrics sync within ±150ms
+- [ ] All 10 Lane-A dialogue shots ran through the talking-character model (no unsynced speaking close-ups); no Lane-B singing close-up held >2s
 - [ ] Italian reviewed by a native speaker (lyrics scan naturally at 96 BPM)
 - [ ] Loudness −14 LUFS, true peak −1 dB, no spikes
 - [ ] Emotional beat resolves warmly (fear → comfort ≤ 25s)
