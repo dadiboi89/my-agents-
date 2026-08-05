@@ -7,7 +7,7 @@
 
 | App | Status | Role in the pipeline |
 |---|---|---|
-| **YouTube** | ✅ Enabled (6 actions) — ⚠️ **needs account authorization** (one click, link below) | Publish: `upload_video`, `upload_video_thumbnail`, `add_video_to_playlist`; measure: `get_report` (channel analytics), `find_video` (competitor/keyword checks) |
+| **YouTube** | ✅ Enabled (6 actions) — account authorized by user (Aug 2026); agent-side verification pending tool-call approval | Publish: `upload_video`, `upload_video_thumbnail`, `add_video_to_playlist`; measure: `get_report` (channel analytics), `find_video` (competitor/keyword checks) |
 | **Google Sheets** | ✅ Connected | Production tracker: one row per shot (SH01–SH35) with status columns (keyframe ▸ clip ▸ approved), plus a publishing log sheet |
 | **Telegram** | ✅ Connected | Pipeline notifications: render finished, upload done, daily shot-status summary |
 | **Gmail** | ✅ Connected | Fallback notifications + weekly performance digest |
