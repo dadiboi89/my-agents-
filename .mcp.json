@@ -4,7 +4,8 @@
       "command": "node",
       "args": ["./creatomate-mcp/index.js"],
       "env": {
-        "CREATOMATE_API_KEY": "${CREATOMATE_API_KEY}"
+        "CREATOMATE_API_KEY": "${CREATOMATE_API_KEY}",
+        "NODE_USE_ENV_PROXY": "1"
       }
     }
   }
