@@ -1,0 +1,36 @@
+# 100% free local n8n — runs on your own computer with Docker Desktop.
+#
+# 1. Get your free stable HTTPS address first (one time):
+#      - sign up free at ngrok.com (no card), then in the dashboard claim your
+#        1 free static domain, e.g. myname.ngrok-free.app
+# 2. Replace YOUR-SUBDOMAIN.ngrok-free.app below (2 places).
+# 3. Start n8n:   docker compose -f local-docker-compose.yml up -d
+# 4. Start the tunnel in a second terminal:
+#      ngrok http --domain=YOUR-SUBDOMAIN.ngrok-free.app 5678
+# 5. Open https://YOUR-SUBDOMAIN.ngrok-free.app and create the owner account.
+#
+# Data persists in the n8n_data volume across restarts. Keep the same static
+# domain and your Google/YouTube OAuth credentials stay valid.
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=YOUR-SUBDOMAIN.ngrok-free.app
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://YOUR-SUBDOMAIN.ngrok-free.app/
+      - N8N_PORT=5678
+      - N8N_SECURE_COOKIE=false
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
+      - GENERIC_TIMEZONE=Europe/Rome
+      # Fill these in for the WF3 keyframe batch (Kling developer console):
+      - KLING_ACCESS_KEY=
+      - KLING_SECRET_KEY=
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
