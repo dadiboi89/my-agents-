@@ -107,14 +107,22 @@ server.tool(
       .optional()
       .describe("Key/value overrides for template placeholders, e.g. {\"Text-1.text\": \"Hello\"}"),
     output_format: z
-      .enum(["mp4", "mov", "gif", "webm", "png", "jpg"])
+      .enum(["mp4", "gif", "jpg", "png"])
       .optional()
       .describe("Desired output format"),
     frame_rate: z.number().optional().describe("Frame rate for video output"),
-    width: z.number().int().optional(),
-    height: z.number().int().optional(),
+    max_width: z
+      .number()
+      .int()
+      .optional()
+      .describe("Max output width in pixels (scales a template render; for raw source compositions set width inside source instead)"),
+    max_height: z
+      .number()
+      .int()
+      .optional()
+      .describe("Max output height in pixels (scales a template render; for raw source compositions set height inside source instead)"),
   },
-  async ({ template_id, source, modifications, output_format, frame_rate, width, height }) => {
+  async ({ template_id, source, modifications, output_format, frame_rate, max_width, max_height }) => {
     try {
       if (!template_id && !source) {
         throw new Error("Provide either template_id or source.");
@@ -124,8 +132,8 @@ server.tool(
         ...(modifications ? { modifications } : {}),
         ...(output_format ? { output_format } : {}),
         ...(frame_rate ? { frame_rate } : {}),
-        ...(width ? { width } : {}),
-        ...(height ? { height } : {}),
+        ...(max_width ? { max_width } : {}),
+        ...(max_height ? { max_height } : {}),
       };
       const data = await creatomateFetch("/renders", {
         method: "POST",
