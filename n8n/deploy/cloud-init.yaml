@@ -1,0 +1,12 @@
+#cloud-config
+# Paste this whole file into the "Cloud config" box when creating the server
+# (Hetzner: Create Server -> expand "Cloud config" under Networking/SSH keys section).
+# The server installs Docker + n8n by itself on first boot (~3 minutes).
+#
+# Optional: to get auto-HTTPS with a domain you own, change the last line to:
+#   - DOMAIN=n8n.yourdomain.com bash /root/n8n-setup.sh
+# (point the domain's A record at the server IP first)
+package_update: true
+runcmd:
+  - curl -fsSL https://raw.githubusercontent.com/dadiboi89/my-agents-/refs/heads/claude/video-script-channel-analysis-kivp55/n8n/deploy/vps-bootstrap.sh -o /root/n8n-setup.sh
+  - bash /root/n8n-setup.sh
