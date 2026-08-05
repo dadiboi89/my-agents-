@@ -1,0 +1,349 @@
+{
+  "name": "Limoncino WF3 — Keyframe Generation Batch (Kling)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c3000000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Shots"
+        },
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000002",
+      "name": "Sheets: Read Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "flt1",
+              "leftValue": "={{ $json.Keyframe }}",
+              "rightValue": "todo",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "flt2",
+              "leftValue": "={{ $json.Prompt }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000003",
+      "name": "Filter: Keyframe=todo",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000004",
+      "name": "Loop Shots",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Builds the JWT Kling's API requires (HS256, 30 min validity).\n// Requires env vars KLING_ACCESS_KEY / KLING_SECRET_KEY on the n8n host\n// and NODE_FUNCTION_ALLOW_BUILTIN=crypto so require('crypto') works.\nconst crypto = require('crypto');\nconst ak = $env.KLING_ACCESS_KEY;\nconst sk = $env.KLING_SECRET_KEY;\nif (!ak || !sk) { throw new Error('Set KLING_ACCESS_KEY and KLING_SECRET_KEY env vars'); }\nconst now = Math.floor(Date.now() / 1000);\nconst b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');\nconst header = b64({ alg: 'HS256', typ: 'JWT' });\nconst payload = b64({ iss: ak, exp: now + 1800, nbf: now - 5 });\nconst sig = crypto.createHmac('sha256', sk).update(header + '.' + payload).digest('base64url');\nreturn $input.all().map(item => ({ json: { ...item.json, kling_jwt: header + '.' + payload + '.' + sig } }));"
+      },
+      "id": "c3000000-0000-4000-8000-000000000005",
+      "name": "Build Kling JWT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-singapore.klingai.com/v1/images/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.kling_jwt }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model_name: 'kling-v2', prompt: $json.Prompt, aspect_ratio: '16:9', n: 1 }) }}",
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000006",
+      "name": "Kling: Create Image Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 100]
+    },
+    {
+      "parameters": {
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "c3000000-0000-4000-8000-000000000007",
+      "name": "Wait 20s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1200, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://api-singapore.klingai.com/v1/images/generations/{{ $('Kling: Create Image Task').item.json.data.task_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Build Kling JWT').item.json.kling_jwt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000008",
+      "name": "Kling: Check Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "d1",
+              "leftValue": "={{ $json.data.task_status }}",
+              "rightValue": "succeed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000009",
+      "name": "Task Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1600, 100]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Shots"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Shot": "={{ $('Loop Shots').item.json.Shot }}",
+            "Keyframe": "={{ $json.data.task_result.images[0].url }}"
+          },
+          "matchingColumns": ["Shot"]
+        },
+        "options": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000010",
+      "name": "Sheets: Write Keyframe URL",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1800, 0]
+    },
+    {
+      "parameters": {
+        "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
+        "text": "=✅ Batch keyframe completato — controlla la colonna Keyframe nel tracker e approva/rigenera.",
+        "additionalFields": {}
+      },
+      "id": "c3000000-0000-4000-8000-000000000011",
+      "name": "Telegram: Batch Done",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [800, -150]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Read Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Read Tracker": {
+      "main": [
+        [
+          {
+            "node": "Filter: Keyframe=todo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: Keyframe=todo": {
+      "main": [
+        [
+          {
+            "node": "Loop Shots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Shots": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Batch Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Kling JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Kling JWT": {
+      "main": [
+        [
+          {
+            "node": "Kling: Create Image Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kling: Create Image Task": {
+      "main": [
+        [
+          {
+            "node": "Wait 20s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20s": {
+      "main": [
+        [
+          {
+            "node": "Kling: Check Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kling: Check Task": {
+      "main": [
+        [
+          {
+            "node": "Task Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Done?": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Write Keyframe URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 20s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Write Keyframe URL": {
+      "main": [
+        [
+          {
+            "node": "Loop Shots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
