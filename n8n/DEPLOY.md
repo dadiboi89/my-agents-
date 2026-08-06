@@ -13,25 +13,46 @@ No card, no hosting account. n8n is a small program; any laptop/PC from the last
 Trade-off: the computer must be **on** while workflows run — fine for a weekly production
 cadence. (WF2's Monday schedule fires only if it's on; otherwise run it manually.)
 
-### One-time setup (~15 min)
+A quick word on *why* some public address is unavoidable here: this conversation runs in a
+cloud session, not on your computer, so it can only reach n8n at an address the internet can
+route to — `localhost` on your machine means nothing to it. That address doesn't have to be a
+paid or account-gated tunnel, though — Cloudflare's quick tunnel needs no signup at all.
 
-1. **Free HTTPS address** (needed so Google login, webhooks, and Claude can reach it):
-   sign up free at **ngrok.com** (no card) → dashboard → claim your **1 free static domain**
-   (e.g. `yourname.ngrok-free.app`) → follow their 2-line install instructions for your OS.
-2. **Install Docker Desktop** (free, docker.com) — or skip Docker and use Node.js 18+: `npx n8n`.
-3. Download [`deploy/local-docker-compose.yml`](deploy/local-docker-compose.yml) from this repo,
-   replace `YOUR-SUBDOMAIN.ngrok-free.app` in it (2 places), then run:
+### One-time setup (~15 min) — Cloudflare Quick Tunnel (zero signup)
+
+1. **Install `cloudflared`** — no account, no card, ever:
+   - macOS: `brew install cloudflared`
+   - Windows: `winget install --id Cloudflare.cloudflared`
+   - Linux: `curl -fsSL https://pkg.cloudflare.com/cloudflared-install.sh | sudo bash` (or grab
+     the binary for your distro from Cloudflare's GitHub releases)
+2. **Start the tunnel** (leave this terminal running):
    ```bash
-   docker compose -f local-docker-compose.yml up -d
-   ngrok http --domain=YOUR-SUBDOMAIN.ngrok-free.app 5678
+   cloudflared tunnel --url http://localhost:5678
    ```
-4. Open `https://YOUR-SUBDOMAIN.ngrok-free.app` → create the **owner account** → "First boot" below.
+   It prints a line like `https://random-two-words-1234.trycloudflare.com` — that is your
+   public address. **No login, no dashboard, nothing to sign up for.**
+3. **Install Docker Desktop** (free, docker.com) — or skip Docker and use Node.js 18+: `npx n8n`.
+4. In [`deploy/`](deploy/), copy `.env.example` to `.env` and set `PUBLIC_HOST` to just the
+   hostname from step 2 (no `https://`), e.g. `random-two-words-1234.trycloudflare.com`.
+5. In a second terminal:
+   ```bash
+   docker compose -f deploy/local-docker-compose.yml up -d
+   ```
+6. Open the `https://…trycloudflare.com` URL from step 2 → create the **owner account** →
+   "First boot" below.
 
-Because the ngrok domain is static and HTTPS: Google/YouTube OAuth works, webhook URLs stay
-stable, and `N8N_BASE_URL` for Claude's `n8n-mcp` is simply your ngrok URL. Data persists in a
-Docker volume across restarts. The tunnel only carries inbound requests (logins, webhook
-triggers) — video downloads/uploads go direct from your machine, so ngrok's free limits don't
-bite.
+**One honest trade-off:** a quick tunnel's URL is random and changes every time `cloudflared`
+restarts (computer reboot, terminal closed, etc.) — fine for getting connected today, but it
+means re-doing steps 2 and 4 (new URL into `.env`, `docker compose up -d` again) whenever that
+happens, and re-telling Claude the new `N8N_BASE_URL`. When that gets old, two free upgrades:
+- **Stable Cloudflare address:** free Cloudflare account (no card) → `cloudflared tunnel login`
+  → create a **named tunnel** instead of a quick one → address never changes again.
+- **ngrok static domain:** free ngrok account (no card) → claim 1 free static subdomain →
+  same idea, different provider.
+
+Either way, Google/YouTube OAuth needs a *stable* HTTPS address before you wire those
+credentials in — the quick tunnel is enough to get the instance running and connected to
+Claude today, but do one of the two upgrades above before connecting YouTube/Sheets.
 
 ### Free always-on upgrade later (optional)
 
@@ -87,6 +108,6 @@ vars (Cloud doesn't expose custom env). Pick this if you never want to think abo
 5. **Activate** WF1 and WF3 (enables their webhook triggers).
 6. **Settings → n8n API → Create API key.**
 7. Give Claude the two values for this repo's environment:
-   - `N8N_BASE_URL` = your instance URL (Path 0: your ngrok URL)
+   - `N8N_BASE_URL` = your instance URL (Path 0: your `https://….trycloudflare.com` or ngrok URL)
    - `N8N_API_KEY` = the key from step 6
    …and Claude can drive the whole pipeline through the `n8n-mcp` server (see `README.md` §4).
