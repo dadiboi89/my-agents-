@@ -90,68 +90,90 @@ workflows are imported and **activated**, Claude can fire them at:
 Typical loop: Claude triggers the keyframe batch → checks `list_executions` → on `error`,
 pulls `get_execution(include_data)` and diagnoses the failing node → re-triggers.
 
-### Path B — Claude (Desktop app or claude.ai) drives n8n natively (MCP Server Trigger node)
+### Path B — Claude (Desktop app or claude.ai) drives n8n natively (n8n's built-in MCP server)
 
-This is what https://docs.n8n.io/connect/connect-to-n8n-mcp-server describes: n8n itself
-becomes an MCP server, and Claude connects to it as a remote connector — no `n8n-mcp`
-package needed for this path, and it works from the Claude Desktop app or claude.ai, not
-just Claude Code sessions.
+n8n itself becomes an MCP server here — no `n8n-mcp` package needed, and it works from the
+Claude Desktop app or claude.ai, not just Claude Code sessions. There are two ways to expose
+it, and two gotchas worth knowing *before* you hit them (both confirmed by n8n community
+threads and Anthropic's own public issue tracker — not guesses):
 
-**1. Import `wf4-mcp-server-trigger.json`** (this repo) into n8n. It wires an **MCP Server
-Trigger** node to three **Tool Workflow** nodes, one per pipeline workflow, each with a
-plain-English name and description so Claude knows when to call it:
-   - `render_and_publish_episode` → WF1
-   - `generate_keyframe_batch` → WF3
-   - `get_weekly_analytics` → WF2
+> **⚠️ Gotcha 1 — skip the OAuth "Add custom connector" click-through.** Multiple reports
+> (n8n community + [anthropics/claude-ai-mcp #396](https://github.com/anthropics/claude-ai-mcp/issues/396),
+> [#697](https://github.com/anthropics/claude-ai-mcp/issues/697)) describe the OAuth flow
+> completing — n8n shows Claude as a connected client — but Claude never attaches the token
+> to actual requests afterward, failing with *"Authorization with the MCP server failed."*
+> Acknowledged by Anthropic support as a known bug as of these reports. **Use an Access
+> Token / Bearer token instead of OAuth2** wherever n8n offers the choice — it bypasses the
+> broken handshake entirely and is what the steps below use.
+>
+> **⚠️ Gotcha 2 — Cloudflare Quick Tunnel can break this specific path.** The MCP transport
+> is a long-lived streaming connection; a default Cloudflare tunnel buffers responses, which
+> can hang it even though plain requests (Path A's REST calls, and WF1/WF3's webhook
+> triggers) work fine over the same tunnel. If Path B hangs on a quick tunnel: the fix
+> (`disableChunkedEncoding: true` on the ingress rule) needs a **named** tunnel with a config
+> file — not available on the zero-signup `cloudflared tunnel --url` one-liner. If you hit
+> this, either upgrade to a named tunnel (free Cloudflare account, see `DEPLOY.md`) or use
+> Path A instead, which is unaffected.
 
-**2. Point the Tool nodes at your actual workflows.** Open each `Tool: … (WFn)` node and,
-in the Workflow field, pick the real WF1/WF2/WF3 from the dropdown (this replaces the
-`REPLACE_WITH_WFn_WORKFLOW_ID` placeholder with the real ID — easier via the picker than
-editing JSON).
+**Option 1 — Instance-level MCP (simpler, check this first):** newer n8n versions have
+**Settings → Instance-level MCP**, which exposes workflows as MCP tools without building any
+extra workflow. Open it, switch auth to **Access Token** (not OAuth2, per Gotcha 1), copy the
+token from the **Connection details** tab, then open WF1/WF2/WF3 individually and mark each
+**Available in MCP**. If your instance doesn't show this menu (older version), use Option 2.
 
-**3. Set up auth on the trigger.** Open **MCP Server Trigger** → Credential → create a new
-**Bearer Auth** credential → generate/paste a long random token (this is what Claude will
-present on every call).
+**Option 2 — MCP Server Trigger node (`wf4-mcp-server-trigger.json`, this repo):** works on
+any n8n version, gives more control over each tool's name/description.
+1. **Import `wf4-mcp-server-trigger.json`.** It wires an **MCP Server Trigger** node to three
+   **Tool Workflow** nodes: `render_and_publish_episode` → WF1, `generate_keyframe_batch` →
+   WF3, `get_weekly_analytics` → WF2.
+2. Open each `Tool: … (WFn)` node and pick the real WF1/WF2/WF3 from the Workflow dropdown
+   (replaces the `REPLACE_WITH_WFn_WORKFLOW_ID` placeholder).
+3. Open **MCP Server Trigger** → Credential → create a **Bearer Auth** credential with a
+   long random token (per Gotcha 1, do not substitute an OAuth2 credential here).
+4. **Activate** the workflow, then open the trigger node again — it now shows a **Production
+   URL**. Copy it, and the Bearer token from step 3.
 
-**4. Activate the workflow.** Open the MCP Server Trigger node — it now shows a
-**Production URL** ending in `/mcp-server/http` (or `/mcp/limoncino-mcp` depending on
-version — copy exactly what's shown). Copy that URL and the Bearer token from step 3.
-
-**5. Connect Claude:**
-   - **claude.ai / Claude Desktop:** Settings → Connectors → **Add custom connector** →
-     paste the Production URL → when prompted for auth, paste the Bearer token → Save.
-     Claude now lists `render_and_publish_episode`, `generate_keyframe_batch`, and
-     `get_weekly_analytics` as callable tools directly in chat, no repo/session needed.
-   - **Claude Code CLI**, one-liner (per n8n's docs):
+**Connect Claude (either option, same last step):**
+   - **claude.ai / Claude Desktop:** Settings → Connectors → **Add custom connector** → paste
+     the Production/Instance MCP URL. If it offers a token/API-key field, use that (Access
+     Token / Bearer) rather than clicking through an OAuth login, per Gotcha 1.
+   - **Claude Code CLI:**
      ```bash
      claude mcp add --transport http n8n-limoncino https://YOUR-N8N-URL/mcp-server/http \
-       --header "Authorization: Bearer YOUR_BEARER_TOKEN"
+       --header "Authorization: Bearer YOUR_TOKEN"
      ```
-   - **Older Claude Desktop versions** that only support local stdio servers use a bridge
-     instead of a direct URL — add this to `claude_desktop_config.json` (Settings → Developer →
-     Edit Config), substituting your URL and token:
+   - **Older Claude Desktop** (local stdio only) — bridge via `mcp-remote` in
+     `claude_desktop_config.json` (Settings → Developer → Edit Config):
      ```json
      {
        "mcpServers": {
          "n8n-limoncino": {
            "command": "npx",
            "args": ["-y", "mcp-remote", "https://YOUR-N8N-URL/mcp-server/http",
-                    "--header", "Authorization:Bearer YOUR_BEARER_TOKEN"]
+                    "--header", "Authorization:Bearer YOUR_TOKEN"]
          }
        }
      }
      ```
-     Restart Claude Desktop after saving.
+     Restart Claude Desktop after saving. This is also the reported reliable fallback if the
+     "Add custom connector" UI still fails after switching to Access Token — it talks to the
+     same endpoint without going through claude.ai's OAuth flow at all.
 
 Path A (`n8n-mcp` in this repo) and Path B are complementary, not exclusive: Path A gives
 Claude Code sessions execution-log/debug tools (`get_execution`, `list_executions`) that
-Path B's plain tool-calling doesn't expose; Path B is what lets the Claude Desktop app or
+Path B's plain tool-calling doesn't expose, and sidesteps both gotchas above since it's a
+plain REST client, not an MCP transport; Path B is what lets the Claude Desktop app or
 claude.ai — outside any repo session — trigger the pipeline directly. Use both.
 
-Security notes: expose n8n over HTTPS only (Path 0's ngrok domain and Path 1's Hetzner+domain
-setup both qualify); the Bearer token on the MCP Server Trigger and the n8n API key from
-Path A are both secrets — treat them like passwords, and rotate the Bearer credential in n8n
-if it's ever pasted somewhere public.
+Security notes: expose n8n over HTTPS only (Path 0's Cloudflare/ngrok tunnel and Path 1's
+Hetzner+domain setup both qualify); the Bearer/Access token here and the n8n API key from
+Path A are both secrets — treat them like passwords, and rotate them in n8n if ever pasted
+somewhere public.
+
+*(Note: `docs.n8n.io` blocks automated fetching, so the above is synthesized from n8n
+community threads and Anthropic's public issue tracker rather than quoted verbatim from the
+official page — worth a manual read at https://docs.n8n.io/connect/connect-to-n8n-mcp-server
+if a step here doesn't match what your n8n version shows.)
 
 ## 5. Notes & known edges
 
