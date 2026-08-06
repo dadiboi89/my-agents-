@@ -1,0 +1,36 @@
+Shot,Section,Time,Dur (s),Type,Description,Keyframe,Clip,Approved,Notes
+SH01,S1 Cold open,0:00,5,generate,"Beach establishing, Nino toddles to tide pool with Biscotto",todo,todo,,
+SH02,S1 Cold open,0:05,4,generate,"Tide pool SPLASH, Nino jumps back surprised",todo,todo,,
+SH03,S1 Cold open,0:09,6,generate,"Gaia kneels, whispers question to camera",todo,todo,,VO line 2
+SH04,S1 Cold open,0:15,3,generate,"Both point forward — Andiamo!",todo,todo,,VO line 3
+SH05,S2 Logo,0:18,7,brand asset,"Limoncino logo sting — lemon bounces, rainbow",todo,todo,,Build once; reuse every episode
+SH06,S3 Transition,0:25,6,generate,"Gaia taps temple, sparkles begin — Usiamo la fantasia!",todo,todo,,VO line 4
+SH07,S3 Transition,0:31,8,generate,"Sandcastle grows into magic castle, pool glows",todo,todo,,Sparkle wipe out
+SH08,S3 Transition,0:39,8,generate,"Underwater reveal — kids float in, Biscotto in snorkel",todo,todo,,
+SH09,S4 Chorus,0:50,7,generate,"Wide: signature dance loop (clap-wiggle-point-jump)",todo,todo,,REUSED in S7 + S11
+SH10,S4 Chorus,0:57,6,generate,"Medium: Nino dancing, bubbles",todo,todo,,REUSED in S7 + S11
+SH11,S4 Chorus,1:03,7,generate,"Medium: Gaia + Biscotto spinning",todo,todo,,REUSED in S7 + S11
+SH12,S5 Fish,1:10,8,generate,"Pesciolino spirals around Nino",todo,todo,,
+SH13,S5 Fish,1:18,8,generate,"Close-up tail wiggle — swish swish",todo,todo,,
+SH14,S5 Fish,1:26,7,generate,"Kids imitate swimming motion",todo,todo,,
+SH15,S5 Fish,1:33,5,generate,"Gaia call-and-response to camera + hold",todo,todo,,VO line 5
+SH16,S6 Crab,1:45,8,generate,"Granchietto side-steps, claws clacking",todo,todo,,
+SH17,S6 Crab,1:53,7,generate,"Biscotto imitates crab — comedy beat",todo,todo,,
+SH18,S6 Crab,2:00,7,generate,"Conga line side-stepping with crab",todo,todo,,
+SH19,S6 Crab,2:07,5,generate,"Nino pinchy-fingers to camera",todo,todo,,VO line 6
+SH20,S7 Chorus 2,2:20,6,generate,"Fish + crab join the dance line",todo,todo,,Plays after SH09-11 reuse
+SH21,S8 Interrupt,2:40,6,generate,"Current WHOOSH, fish tumbles away",todo,todo,,Music stops
+SH22,S8 Interrupt,2:46,7,generate,"Fish hides behind rock, scared, tearful",todo,todo,,VO line 7
+SH23,S8 Interrupt,2:53,8,generate,"Group hug, fish smiles, warm light bloom",todo,todo,,VO line 8; music restarts
+SH24,S9 Dolphin,3:05,8,generate,"Delfino arcs overhead in slow motion",todo,todo,,
+SH25,S9 Dolphin,3:13,7,generate,"Dolphin somersault then dive",todo,todo,,
+SH26,S9 Dolphin,3:20,7,generate,"Kids crouch and JUMP with dolphin",todo,todo,,VO line 9
+SH27,S10 Octopus,3:40,7,generate,"Polipetto peeks shyly from rocks",todo,todo,,
+SH28,S10 Octopus,3:47,10,generate,"Eight arms wave in sequence — counting beat",todo,todo,,"Numbers 1–8 = Creatomate text, NOT in gen"
+SH29,S10 Octopus,3:57,6,generate,"Octopus happy noodle-arm dance — evviva!",todo,todo,,
+SH30,S10 Octopus,4:03,5,generate,"Gaia: Era lui nell'acqua! — cold-open payoff",todo,todo,,VO line 10
+SH31,S11 Finale,4:20,8,generate,"Full cast dance, bubble confetti",todo,todo,,After SH09-11 reuse; flashcards = Ken Burns on keyframes
+SH32,S12 Outro,4:50,8,generate,"Sparkle wipe back to sunset beach",todo,todo,,Lullaby starts
+SH33,S12 Outro,4:58,8,generate,"Nino yawns in Mamma's arms, Gaia waves, Biscotto asleep",todo,todo,,
+SH34,S12 Outro,5:06,8,generate,"Sunset seascape, sleepy sun, first stars",todo,todo,,
+SH35,S13 End card,5:20,10,brand asset,"End card: logo + subscribe + next-video slot",todo,todo,,Build in Creatomate once; reuse every episode

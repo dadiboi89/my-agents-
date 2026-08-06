@@ -1,0 +1,97 @@
+{
+  "name": "Limoncino WF4 — MCP Server (exposes WF1 + WF3 to Claude)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "limoncino-mcp",
+        "authentication": "bearerAuth",
+        "options": {}
+      },
+      "id": "d4000000-0000-4000-8000-000000000001",
+      "name": "MCP Server Trigger",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 1,
+      "position": [400, 200],
+      "webhookId": "d4000000-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "name": "render_and_publish_episode",
+        "description": "Renders the current episode's Creatomate composition and uploads it to YouTube as a private video. Use when the user asks to render/publish/upload the episode.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REPLACE_WITH_WF1_WORKFLOW_ID",
+          "cachedResultName": "Limoncino WF1 — Render & Publish"
+        }
+      },
+      "id": "d4000000-0000-4000-8000-000000000002",
+      "name": "Tool: Render & Publish (WF1)",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [200, 400]
+    },
+    {
+      "parameters": {
+        "name": "generate_keyframe_batch",
+        "description": "Generates every pending keyframe image (rows with Keyframe=todo in the shot tracker) via the Kling API and writes the results back into the tracker. Use when the user asks to run/start the keyframe batch.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REPLACE_WITH_WF3_WORKFLOW_ID",
+          "cachedResultName": "Limoncino WF3 — Keyframe Generation Batch (Kling)"
+        }
+      },
+      "id": "d4000000-0000-4000-8000-000000000003",
+      "name": "Tool: Keyframe Batch (WF3)",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [400, 400]
+    },
+    {
+      "parameters": {
+        "name": "get_weekly_analytics",
+        "description": "Fetches the last 7 days of channel views, watch time, and subscriber growth and logs them. Use when the user asks for this week's / recent YouTube performance.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REPLACE_WITH_WF2_WORKFLOW_ID",
+          "cachedResultName": "Limoncino WF2 — Weekly Analytics"
+        }
+      },
+      "id": "d4000000-0000-4000-8000-000000000004",
+      "name": "Tool: Weekly Analytics (WF2)",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [600, 400]
+    }
+  ],
+  "connections": {
+    "MCP Server Trigger": {
+      "ai_tool": [
+        [
+          {
+            "node": "Tool: Render & Publish (WF1)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Tool: Keyframe Batch (WF3)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Tool: Weekly Analytics (WF2)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

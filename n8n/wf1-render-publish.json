@@ -1,0 +1,376 @@
+{
+  "name": "Limoncino WF1 — Render & Publish",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "limoncino-render-publish",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000012",
+      "name": "Webhook Trigger (Claude)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 180],
+      "webhookId": "a1000000-0000-4000-8000-000000000012"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "source_url",
+              "value": "https://raw.githubusercontent.com/dadiboi89/my-agents-/main/n8n/compositions/ep01-master.json",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "yt_title",
+              "value": "Chi Vive nel Mare? 🐠 | Limoncino TV – Canzoni per Bambini",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "yt_description",
+              "value": "Chi vive nel mare? 🐠 Scopri con Nino e Gaia gli animali del mare: il pesciolino, il granchietto, il delfino e il polipetto! Canzoni per bambini piccoli.",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "yt_tags",
+              "value": "canzoni per bambini, canzoni per bambini piccoli, animali del mare per bambini, filastrocche, video educativi per bambini, impara a contare",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "sheet_id",
+              "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "f6",
+              "name": "telegram_chat_id",
+              "value": "REPLACE_WITH_TELEGRAM_CHAT_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Episode Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.source_url }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Fetch Composition JSON",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $json }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Creatomate: Start Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Wait 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.creatomate.com/v1/renders/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "Creatomate: Check Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "Render Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Download MP4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, -100]
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Episode Config').item.json.yt_title }}",
+        "regionCode": "IT",
+        "categoryId": "27",
+        "options": {
+          "description": "={{ $('Episode Config').item.json.yt_description }}",
+          "privacyStatus": "private",
+          "tags": "={{ $('Episode Config').item.json.yt_tags }}",
+          "defaultLanguage": "it",
+          "selfDeclaredMadeForKids": true,
+          "notifySubscribers": false
+        },
+        "binaryProperty": "data"
+      },
+      "id": "a1000000-0000-4000-8000-000000000009",
+      "name": "YouTube: Upload (private)",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [1600, -100]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Episode Config').item.json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Publishing Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}",
+            "title": "={{ $('Episode Config').item.json.yt_title }}",
+            "video_id": "={{ $json.id }}",
+            "status": "uploaded_private"
+          }
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000010",
+      "name": "Sheets: Log Publish",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1800, -100]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Episode Config').item.json.telegram_chat_id }}",
+        "text": "=🎬 Episodio caricato su YouTube (privato, pronto per QC):\nhttps://youtu.be/{{ $('YouTube: Upload (private)').item.json.id }}\n\nTitolo: {{ $('Episode Config').item.json.yt_title }}",
+        "additionalFields": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000011",
+      "name": "Telegram: Notify",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2000, -100]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Episode Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Episode Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Episode Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Composition JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Composition JSON": {
+      "main": [
+        [
+          {
+            "node": "Creatomate: Start Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creatomate: Start Render": {
+      "main": [
+        [
+          {
+            "node": "Wait 30s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30s": {
+      "main": [
+        [
+          {
+            "node": "Creatomate: Check Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creatomate: Check Render": {
+      "main": [
+        [
+          {
+            "node": "Render Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Done?": {
+      "main": [
+        [
+          {
+            "node": "Download MP4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 30s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download MP4": {
+      "main": [
+        [
+          {
+            "node": "YouTube: Upload (private)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YouTube: Upload (private)": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Log Publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Log Publish": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
