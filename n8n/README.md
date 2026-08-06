@@ -10,6 +10,7 @@ No per-call approval gates — the workflows run on your server, under your cred
 | `wf1-render-publish.json` | Manual (click "Execute") | Fetches the episode's Creatomate composition JSON (from this repo's raw URL) → starts the render → polls every 30s until done → downloads the MP4 → uploads to YouTube **private** with made-for-kids + Italian metadata → logs to the "Publishing Log" sheet → Telegram ping with the video link |
 | `wf2-weekly-analytics.json` | Every Monday 08:00 | Pulls last-7-days channel stats from the YouTube Analytics API → appends to the "Analytics Log" sheet → sends a Telegram digest |
 | `wf3-keyframe-batch.json` | Manual | Reads the "Shots" sheet (the tracker CSV imported to Google Sheets), takes every row with `Keyframe = todo` and a `Prompt`, generates each keyframe via the Kling API (one at a time, polling until done), writes the image URL back into the row, Telegram ping when the batch finishes |
+| `wf4-mcp-server-trigger.json` | MCP Server Trigger (always-on) | Exposes WF1/WF2/WF3 as named tools (`render_and_publish_episode`, `get_weekly_analytics`, `generate_keyframe_batch`) that Claude Desktop, claude.ai, or Claude Code can call directly — see §4 Path B |
 
 Division of labor stays the same as planned: **Claude does the creative work** (scripts, prompts, QC judgment, packaging) — **n8n runs the machine** (batches, polling, uploads, logs, notifications).
 
@@ -89,18 +90,68 @@ workflows are imported and **activated**, Claude can fire them at:
 Typical loop: Claude triggers the keyframe batch → checks `list_executions` → on `error`,
 pulls `get_execution(include_data)` and diagnoses the failing node → re-triggers.
 
-### Path B — claude.ai app drives n8n (MCP Server Trigger node)
+### Path B — Claude (Desktop app or claude.ai) drives n8n natively (MCP Server Trigger node)
 
-For triggering from the Claude chat app (no Claude Code session), use n8n's native
-**MCP Server Trigger** node: create a new workflow, add *MCP Server Trigger*, attach
-*Custom n8n Workflow Tool* nodes pointing at WF1/WF3, activate it, copy the trigger's
-**Production URL** and Bearer token, then in claude.ai go to
-**Settings → Connectors → Add custom connector** and paste them. Claude in the app can
-then call your workflows as first-class tools.
+This is what https://docs.n8n.io/connect/connect-to-n8n-mcp-server describes: n8n itself
+becomes an MCP server, and Claude connects to it as a remote connector — no `n8n-mcp`
+package needed for this path, and it works from the Claude Desktop app or claude.ai, not
+just Claude Code sessions.
 
-Security notes: expose n8n over HTTPS only; treat the API key and webhook paths as
-secrets (anyone with the URL can fire an active webhook — add Header Auth on the
-Webhook nodes if the instance is publicly reachable).
+**1. Import `wf4-mcp-server-trigger.json`** (this repo) into n8n. It wires an **MCP Server
+Trigger** node to three **Tool Workflow** nodes, one per pipeline workflow, each with a
+plain-English name and description so Claude knows when to call it:
+   - `render_and_publish_episode` → WF1
+   - `generate_keyframe_batch` → WF3
+   - `get_weekly_analytics` → WF2
+
+**2. Point the Tool nodes at your actual workflows.** Open each `Tool: … (WFn)` node and,
+in the Workflow field, pick the real WF1/WF2/WF3 from the dropdown (this replaces the
+`REPLACE_WITH_WFn_WORKFLOW_ID` placeholder with the real ID — easier via the picker than
+editing JSON).
+
+**3. Set up auth on the trigger.** Open **MCP Server Trigger** → Credential → create a new
+**Bearer Auth** credential → generate/paste a long random token (this is what Claude will
+present on every call).
+
+**4. Activate the workflow.** Open the MCP Server Trigger node — it now shows a
+**Production URL** ending in `/mcp-server/http` (or `/mcp/limoncino-mcp` depending on
+version — copy exactly what's shown). Copy that URL and the Bearer token from step 3.
+
+**5. Connect Claude:**
+   - **claude.ai / Claude Desktop:** Settings → Connectors → **Add custom connector** →
+     paste the Production URL → when prompted for auth, paste the Bearer token → Save.
+     Claude now lists `render_and_publish_episode`, `generate_keyframe_batch`, and
+     `get_weekly_analytics` as callable tools directly in chat, no repo/session needed.
+   - **Claude Code CLI**, one-liner (per n8n's docs):
+     ```bash
+     claude mcp add --transport http n8n-limoncino https://YOUR-N8N-URL/mcp-server/http \
+       --header "Authorization: Bearer YOUR_BEARER_TOKEN"
+     ```
+   - **Older Claude Desktop versions** that only support local stdio servers use a bridge
+     instead of a direct URL — add this to `claude_desktop_config.json` (Settings → Developer →
+     Edit Config), substituting your URL and token:
+     ```json
+     {
+       "mcpServers": {
+         "n8n-limoncino": {
+           "command": "npx",
+           "args": ["-y", "mcp-remote", "https://YOUR-N8N-URL/mcp-server/http",
+                    "--header", "Authorization:Bearer YOUR_BEARER_TOKEN"]
+         }
+       }
+     }
+     ```
+     Restart Claude Desktop after saving.
+
+Path A (`n8n-mcp` in this repo) and Path B are complementary, not exclusive: Path A gives
+Claude Code sessions execution-log/debug tools (`get_execution`, `list_executions`) that
+Path B's plain tool-calling doesn't expose; Path B is what lets the Claude Desktop app or
+claude.ai — outside any repo session — trigger the pipeline directly. Use both.
+
+Security notes: expose n8n over HTTPS only (Path 0's ngrok domain and Path 1's Hetzner+domain
+setup both qualify); the Bearer token on the MCP Server Trigger and the n8n API key from
+Path A are both secrets — treat them like passwords, and rotate the Bearer credential in n8n
+if it's ever pasted somewhere public.
 
 ## 5. Notes & known edges
 
